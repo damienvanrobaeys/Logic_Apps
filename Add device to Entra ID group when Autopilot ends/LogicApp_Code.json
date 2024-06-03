@@ -1,0 +1,929 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "Recurrence": {
+        "type": "Recurrence",
+        "recurrence": {
+          "frequency": "Month",
+          "interval": 3
+        }
+      }
+    },
+    "actions": {
+      "Filter_array": {
+        "type": "Query",
+        "inputs": {
+          "from": "@body('Parse_JSON')?['value']",
+          "where": "@equals(item()?['deploymentState'],'success')"
+        },
+        "runAfter": {
+          "Parse_JSON": [
+            "Succeeded"
+          ]
+        }
+      },
+      "For_each": {
+        "type": "Foreach",
+        "foreach": "@body('Filter_array')",
+        "actions": {
+          "For_each_2": {
+            "type": "Foreach",
+            "foreach": "@body('Parse_JSON_2')?['value']",
+            "actions": {
+              "For_each_3": {
+                "type": "Foreach",
+                "foreach": "@body('Parse_JSON_3')?['value']",
+                "actions": {
+                  "Condition": {
+                    "type": "If",
+                    "expression": {
+                      "and": [
+                        {
+                          "equals": [
+                            "@variables('GroupCodeStatus')",
+                            "404"
+                          ]
+                        }
+                      ]
+                    },
+                    "actions": {
+                      "HTTP_5": {
+                        "type": "Http",
+                        "inputs": {
+                          "uri": "https://graph.microsoft.com/v1.0/groups/@{variables('GroupID')}/members/$ref",
+                          "method": "POST",
+                          "body": {
+                            "@@odata.id": "https://graph.microsoft.com/v1.0/devices/@{items('For_each_3')?['id']}"
+                          }
+                        }
+                      }
+                    },
+                    "else": {
+                      "actions": {}
+                    },
+                    "runAfter": {
+                      "Set_variable": [
+                        "Succeeded",
+                        "Failed"
+                      ]
+                    }
+                  },
+                  "HTTP_4": {
+                    "type": "Http",
+                    "inputs": {
+                      "uri": "https://graph.microsoft.com/v1.0/groups/b5e35031-c980-45d2-89be-9267c001a64b/members?$filter=id eq '@{items('For_each_3')?['id']}'",
+                      "method": "GET"
+                    }
+                  },
+                  "Set_variable": {
+                    "type": "SetVariable",
+                    "inputs": {
+                      "name": "GroupCodeStatus",
+                      "value": "@{outputs('HTTP_4')['statusCode']}"
+                    },
+                    "runAfter": {
+                      "HTTP_4": [
+                        "Succeeded",
+                        "Failed"
+                      ]
+                    }
+                  }
+                },
+                "runAfter": {
+                  "Parse_JSON_3": [
+                    "Succeeded"
+                  ]
+                }
+              },
+              "HTTP_3": {
+                "type": "Http",
+                "inputs": {
+                  "uri": "https://graph.microsoft.com/v1.0/devices?$filter=deviceId eq '@{items('For_each_2')?['azureADDeviceId']}'",
+                  "method": "GET"
+                }
+              },
+              "Parse_JSON_3": {
+                "type": "ParseJson",
+                "inputs": {
+                  "content": "@body('HTTP_3')",
+                  "schema": {
+                    "properties": {
+                      "@@odata.context": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "items": {
+                          "properties": {
+                            "accountEnabled": {
+                              "type": "boolean"
+                            },
+                            "alternativeSecurityIds": {
+                              "items": {
+                                "properties": {
+                                  "identityProvider": {},
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "type": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "identityProvider",
+                                  "key"
+                                ],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "approximateLastSignInDateTime": {
+                              "type": "string"
+                            },
+                            "complianceExpirationDateTime": {},
+                            "createdDateTime": {
+                              "type": "string"
+                            },
+                            "deletedDateTime": {},
+                            "deviceCategory": {},
+                            "deviceId": {
+                              "type": "string"
+                            },
+                            "deviceMetadata": {},
+                            "deviceOwnership": {
+                              "type": "string"
+                            },
+                            "deviceVersion": {
+                              "type": "integer"
+                            },
+                            "displayName": {
+                              "type": "string"
+                            },
+                            "domainName": {},
+                            "enrollmentProfileName": {
+                              "type": "string"
+                            },
+                            "enrollmentType": {
+                              "type": "string"
+                            },
+                            "extensionAttributes": {
+                              "properties": {
+                                "extensionAttribute1": {},
+                                "extensionAttribute10": {},
+                                "extensionAttribute11": {},
+                                "extensionAttribute12": {},
+                                "extensionAttribute13": {},
+                                "extensionAttribute14": {},
+                                "extensionAttribute15": {},
+                                "extensionAttribute2": {},
+                                "extensionAttribute3": {},
+                                "extensionAttribute4": {},
+                                "extensionAttribute5": {},
+                                "extensionAttribute6": {},
+                                "extensionAttribute7": {},
+                                "extensionAttribute8": {},
+                                "extensionAttribute9": {}
+                              },
+                              "type": "object"
+                            },
+                            "externalSourceName": {},
+                            "id": {
+                              "type": "string"
+                            },
+                            "isCompliant": {
+                              "type": "boolean"
+                            },
+                            "isManaged": {
+                              "type": "boolean"
+                            },
+                            "isRooted": {
+                              "type": "boolean"
+                            },
+                            "managementType": {
+                              "type": "string"
+                            },
+                            "manufacturer": {
+                              "type": "string"
+                            },
+                            "mdmAppId": {
+                              "type": "string"
+                            },
+                            "model": {
+                              "type": "string"
+                            },
+                            "onPremisesLastSyncDateTime": {},
+                            "onPremisesSyncEnabled": {},
+                            "operatingSystem": {
+                              "type": "string"
+                            },
+                            "operatingSystemVersion": {
+                              "type": "string"
+                            },
+                            "physicalIds": {
+                              "items": {
+                                "type": "string"
+                              },
+                              "type": "array"
+                            },
+                            "profileType": {
+                              "type": "string"
+                            },
+                            "registrationDateTime": {
+                              "type": "string"
+                            },
+                            "sourceType": {},
+                            "systemLabels": {
+                              "type": "array"
+                            },
+                            "trustType": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "deletedDateTime",
+                            "accountEnabled",
+                            "approximateLastSignInDateTime",
+                            "complianceExpirationDateTime",
+                            "createdDateTime",
+                            "deviceCategory",
+                            "deviceId",
+                            "deviceMetadata",
+                            "deviceOwnership",
+                            "deviceVersion",
+                            "displayName",
+                            "domainName",
+                            "enrollmentProfileName",
+                            "enrollmentType",
+                            "externalSourceName",
+                            "isCompliant",
+                            "isManaged",
+                            "isRooted",
+                            "managementType",
+                            "manufacturer",
+                            "mdmAppId",
+                            "model",
+                            "onPremisesLastSyncDateTime",
+                            "onPremisesSyncEnabled",
+                            "operatingSystem",
+                            "operatingSystemVersion",
+                            "physicalIds",
+                            "profileType",
+                            "registrationDateTime",
+                            "sourceType",
+                            "systemLabels",
+                            "trustType",
+                            "extensionAttributes",
+                            "alternativeSecurityIds"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "runAfter": {
+                  "HTTP_3": [
+                    "Succeeded"
+                  ]
+                }
+              }
+            },
+            "runAfter": {
+              "Parse_JSON_2": [
+                "Succeeded"
+              ]
+            }
+          },
+          "HTTP_2": {
+            "type": "Http",
+            "inputs": {
+              "uri": "https://graph.microsoft.com/beta/deviceManagement/managedDevices?$filter=contains(deviceName,'@{items('For_each')?['managedDeviceName']}')",
+              "method": "GET"
+            }
+          },
+          "Parse_JSON_2": {
+            "type": "ParseJson",
+            "inputs": {
+              "content": "@body('HTTP_2')",
+              "schema": {
+                "properties": {
+                  "@@odata.context": {
+                    "type": "string"
+                  },
+                  "@@odata.count": {
+                    "type": "integer"
+                  },
+                  "value": {
+                    "items": {
+                      "properties": {
+                        "aadRegistered": {
+                          "type": "boolean"
+                        },
+                        "activationLockBypassCode": {},
+                        "androidSecurityPatchLevel": {
+                          "type": "string"
+                        },
+                        "autopilotEnrolled": {
+                          "type": "boolean"
+                        },
+                        "azureADDeviceId": {
+                          "type": "string"
+                        },
+                        "azureADRegistered": {
+                          "type": "boolean"
+                        },
+                        "azureActiveDirectoryDeviceId": {
+                          "type": "string"
+                        },
+                        "bootstrapTokenEscrowed": {
+                          "type": "boolean"
+                        },
+                        "chassisType": {
+                          "type": "string"
+                        },
+                        "chromeOSDeviceInfo": {
+                          "type": "array"
+                        },
+                        "complianceGracePeriodExpirationDateTime": {
+                          "type": "string"
+                        },
+                        "complianceState": {
+                          "type": "string"
+                        },
+                        "configurationManagerClientEnabledFeatures": {},
+                        "configurationManagerClientHealthState": {},
+                        "configurationManagerClientInformation": {},
+                        "deviceActionResults": {
+                          "type": "array"
+                        },
+                        "deviceCategoryDisplayName": {
+                          "type": "string"
+                        },
+                        "deviceEnrollmentType": {
+                          "type": "string"
+                        },
+                        "deviceFirmwareConfigurationInterfaceManaged": {
+                          "type": "boolean"
+                        },
+                        "deviceHealthAttestationState": {},
+                        "deviceIdentityAttestationDetail": {},
+                        "deviceName": {
+                          "type": "string"
+                        },
+                        "deviceRegistrationState": {
+                          "type": "string"
+                        },
+                        "deviceType": {
+                          "type": "string"
+                        },
+                        "easActivated": {
+                          "type": "boolean"
+                        },
+                        "easActivationDateTime": {
+                          "type": "string"
+                        },
+                        "easDeviceId": {
+                          "type": "string"
+                        },
+                        "emailAddress": {
+                          "type": "string"
+                        },
+                        "enrolledDateTime": {
+                          "type": "string"
+                        },
+                        "enrollmentProfileName": {},
+                        "ethernetMacAddress": {},
+                        "exchangeAccessState": {
+                          "type": "string"
+                        },
+                        "exchangeAccessStateReason": {
+                          "type": "string"
+                        },
+                        "exchangeLastSuccessfulSyncDateTime": {
+                          "type": "string"
+                        },
+                        "freeStorageSpaceInBytes": {
+                          "type": "integer"
+                        },
+                        "hardwareInformation": {
+                          "properties": {
+                            "batteryChargeCycles": {
+                              "type": "integer"
+                            },
+                            "batteryHealthPercentage": {
+                              "type": "integer"
+                            },
+                            "batteryLevelPercentage": {},
+                            "batterySerialNumber": {},
+                            "cellularTechnology": {},
+                            "deviceFullQualifiedDomainName": {},
+                            "deviceGuardLocalSystemAuthorityCredentialGuardState": {
+                              "type": "string"
+                            },
+                            "deviceGuardVirtualizationBasedSecurityHardwareRequirementState": {
+                              "type": "string"
+                            },
+                            "deviceGuardVirtualizationBasedSecurityState": {
+                              "type": "string"
+                            },
+                            "deviceLicensingLastErrorCode": {
+                              "type": "integer"
+                            },
+                            "deviceLicensingLastErrorDescription": {},
+                            "deviceLicensingStatus": {
+                              "type": "string"
+                            },
+                            "esimIdentifier": {},
+                            "freeStorageSpace": {
+                              "type": "integer"
+                            },
+                            "imei": {
+                              "type": "string"
+                            },
+                            "ipAddressV4": {},
+                            "isEncrypted": {
+                              "type": "boolean"
+                            },
+                            "isSharedDevice": {
+                              "type": "boolean"
+                            },
+                            "isSupervised": {
+                              "type": "boolean"
+                            },
+                            "manufacturer": {},
+                            "meid": {},
+                            "model": {},
+                            "operatingSystemEdition": {},
+                            "operatingSystemLanguage": {},
+                            "operatingSystemProductType": {
+                              "type": "integer"
+                            },
+                            "osBuildNumber": {},
+                            "phoneNumber": {},
+                            "productName": {},
+                            "residentUsersCount": {},
+                            "serialNumber": {
+                              "type": "string"
+                            },
+                            "sharedDeviceCachedUsers": {
+                              "type": "array"
+                            },
+                            "subnetAddress": {},
+                            "subscriberCarrier": {},
+                            "systemManagementBIOSVersion": {},
+                            "totalStorageSpace": {
+                              "type": "integer"
+                            },
+                            "tpmManufacturer": {},
+                            "tpmSpecificationVersion": {},
+                            "tpmVersion": {},
+                            "wifiMac": {},
+                            "wiredIPv4Addresses": {
+                              "type": "array"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "iccid": {},
+                        "id": {
+                          "type": "string"
+                        },
+                        "imei": {
+                          "type": "string"
+                        },
+                        "isEncrypted": {
+                          "type": "boolean"
+                        },
+                        "isSupervised": {
+                          "type": "boolean"
+                        },
+                        "jailBroken": {
+                          "type": "string"
+                        },
+                        "joinType": {
+                          "type": "string"
+                        },
+                        "lastSyncDateTime": {
+                          "type": "string"
+                        },
+                        "lostModeState": {
+                          "type": "string"
+                        },
+                        "managedDeviceName": {
+                          "type": "string"
+                        },
+                        "managedDeviceOwnerType": {
+                          "type": "string"
+                        },
+                        "managementAgent": {
+                          "type": "string"
+                        },
+                        "managementCertificateExpirationDate": {
+                          "type": "string"
+                        },
+                        "managementFeatures": {
+                          "type": "string"
+                        },
+                        "managementState": {
+                          "type": "string"
+                        },
+                        "manufacturer": {
+                          "type": "string"
+                        },
+                        "meid": {
+                          "type": "string"
+                        },
+                        "model": {
+                          "type": "string"
+                        },
+                        "notes": {},
+                        "operatingSystem": {
+                          "type": "string"
+                        },
+                        "osVersion": {
+                          "type": "string"
+                        },
+                        "ownerType": {
+                          "type": "string"
+                        },
+                        "partnerReportedThreatState": {
+                          "type": "string"
+                        },
+                        "phoneNumber": {
+                          "type": "string"
+                        },
+                        "physicalMemoryInBytes": {
+                          "type": "integer"
+                        },
+                        "preferMdmOverGroupPolicyAppliedDateTime": {
+                          "type": "string"
+                        },
+                        "processorArchitecture": {
+                          "type": "string"
+                        },
+                        "remoteAssistanceSessionErrorDetails": {},
+                        "remoteAssistanceSessionUrl": {},
+                        "requireUserEnrollmentApproval": {},
+                        "retireAfterDateTime": {
+                          "type": "string"
+                        },
+                        "roleScopeTagIds": {
+                          "type": "array"
+                        },
+                        "securityPatchLevel": {
+                          "type": "string"
+                        },
+                        "serialNumber": {
+                          "type": "string"
+                        },
+                        "skuFamily": {
+                          "type": "string"
+                        },
+                        "skuNumber": {
+                          "type": "integer"
+                        },
+                        "specificationVersion": {},
+                        "subscriberCarrier": {
+                          "type": "string"
+                        },
+                        "totalStorageSpaceInBytes": {
+                          "type": "integer"
+                        },
+                        "udid": {},
+                        "userDisplayName": {
+                          "type": "string"
+                        },
+                        "userId": {
+                          "type": "string"
+                        },
+                        "userPrincipalName": {
+                          "type": "string"
+                        },
+                        "usersLoggedOn": {
+                          "items": {
+                            "properties": {
+                              "lastLogOnDateTime": {
+                                "type": "string"
+                              },
+                              "userId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "lastLogOnDateTime"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        "wiFiMacAddress": {
+                          "type": "string"
+                        },
+                        "windowsActiveMalwareCount": {
+                          "type": "integer"
+                        },
+                        "windowsRemediatedMalwareCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "deviceName",
+                        "ownerType",
+                        "managedDeviceOwnerType",
+                        "managementState",
+                        "enrolledDateTime",
+                        "lastSyncDateTime",
+                        "chassisType",
+                        "operatingSystem",
+                        "deviceType",
+                        "complianceState",
+                        "jailBroken",
+                        "managementAgent",
+                        "osVersion",
+                        "easActivated",
+                        "easDeviceId",
+                        "easActivationDateTime",
+                        "aadRegistered",
+                        "azureADRegistered",
+                        "deviceEnrollmentType",
+                        "lostModeState",
+                        "activationLockBypassCode",
+                        "emailAddress",
+                        "azureActiveDirectoryDeviceId",
+                        "azureADDeviceId",
+                        "deviceRegistrationState",
+                        "deviceCategoryDisplayName",
+                        "isSupervised",
+                        "exchangeLastSuccessfulSyncDateTime",
+                        "exchangeAccessState",
+                        "exchangeAccessStateReason",
+                        "remoteAssistanceSessionUrl",
+                        "remoteAssistanceSessionErrorDetails",
+                        "isEncrypted",
+                        "userPrincipalName",
+                        "model",
+                        "manufacturer",
+                        "imei",
+                        "complianceGracePeriodExpirationDateTime",
+                        "serialNumber",
+                        "phoneNumber",
+                        "androidSecurityPatchLevel",
+                        "userDisplayName",
+                        "configurationManagerClientEnabledFeatures",
+                        "wiFiMacAddress",
+                        "deviceHealthAttestationState",
+                        "subscriberCarrier",
+                        "meid",
+                        "totalStorageSpaceInBytes",
+                        "freeStorageSpaceInBytes",
+                        "managedDeviceName",
+                        "partnerReportedThreatState",
+                        "retireAfterDateTime",
+                        "preferMdmOverGroupPolicyAppliedDateTime",
+                        "autopilotEnrolled",
+                        "requireUserEnrollmentApproval",
+                        "managementCertificateExpirationDate",
+                        "iccid",
+                        "udid",
+                        "roleScopeTagIds",
+                        "windowsActiveMalwareCount",
+                        "windowsRemediatedMalwareCount",
+                        "notes",
+                        "configurationManagerClientHealthState",
+                        "configurationManagerClientInformation",
+                        "ethernetMacAddress",
+                        "physicalMemoryInBytes",
+                        "processorArchitecture",
+                        "specificationVersion",
+                        "joinType",
+                        "skuFamily",
+                        "securityPatchLevel",
+                        "skuNumber",
+                        "managementFeatures",
+                        "enrollmentProfileName",
+                        "bootstrapTokenEscrowed",
+                        "deviceFirmwareConfigurationInterfaceManaged",
+                        "deviceIdentityAttestationDetail",
+                        "hardwareInformation",
+                        "deviceActionResults",
+                        "usersLoggedOn",
+                        "chromeOSDeviceInfo"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "runAfter": {
+              "HTTP_2": [
+                "Succeeded"
+              ]
+            }
+          }
+        },
+        "runAfter": {
+          "Initialize_variable_2": [
+            "Succeeded"
+          ]
+        }
+      },
+      "HTTP": {
+        "type": "Http",
+        "inputs": {
+          "uri": "https://graph.microsoft.com/beta/deviceManagement/autopilotEvents?$filter=microsoft.graph.DeviceManagementAutopilotEvent/deploymentEndDateTime%20ge%20@{addHours(utcNow(),-4)}",
+          "method": "GET"
+        },
+        "runAfter": {}
+      },
+      "Initialize_variable": {
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "GroupCodeStatus",
+              "type": "string"
+            }
+          ]
+        },
+        "runAfter": {
+          "Filter_array": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Initialize_variable_2": {
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "GroupID",
+              "type": "string",
+              "value": "b5e35031-c980-45d2-89be-9267c001a64b"
+            }
+          ]
+        },
+        "runAfter": {
+          "Initialize_variable": [
+            "Succeeded"
+          ]
+        }
+      },
+      "Parse_JSON": {
+        "type": "ParseJson",
+        "inputs": {
+          "content": "@body('HTTP')",
+          "schema": {
+            "properties": {
+              "@@odata.context": {
+                "type": "string"
+              },
+              "value": {
+                "items": {
+                  "properties": {
+                    "accountSetupDuration": {
+                      "type": "string"
+                    },
+                    "accountSetupStatus": {
+                      "type": "string"
+                    },
+                    "deploymentDuration": {
+                      "type": "string"
+                    },
+                    "deploymentEndDateTime": {
+                      "type": "string"
+                    },
+                    "deploymentStartDateTime": {
+                      "type": "string"
+                    },
+                    "deploymentState": {
+                      "type": "string"
+                    },
+                    "deploymentTotalDuration": {
+                      "type": "string"
+                    },
+                    "deviceId": {
+                      "type": "string"
+                    },
+                    "devicePreparationDuration": {
+                      "type": "string"
+                    },
+                    "deviceRegisteredDateTime": {
+                      "type": "string"
+                    },
+                    "deviceSerialNumber": {
+                      "type": "string"
+                    },
+                    "deviceSetupDuration": {
+                      "type": "string"
+                    },
+                    "deviceSetupStatus": {
+                      "type": "string"
+                    },
+                    "enrollmentFailureDetails": {},
+                    "enrollmentStartDateTime": {
+                      "type": "string"
+                    },
+                    "enrollmentState": {
+                      "type": "string"
+                    },
+                    "enrollmentType": {
+                      "type": "string"
+                    },
+                    "eventDateTime": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "managedDeviceName": {
+                      "type": "string"
+                    },
+                    "osVersion": {
+                      "type": "string"
+                    },
+                    "targetedAppCount": {
+                      "type": "integer"
+                    },
+                    "targetedPolicyCount": {
+                      "type": "integer"
+                    },
+                    "userPrincipalName": {
+                      "type": "string"
+                    },
+                    "windows10EnrollmentCompletionPageConfigurationDisplayName": {
+                      "type": "string"
+                    },
+                    "windows10EnrollmentCompletionPageConfigurationId": {},
+                    "windowsAutopilotDeploymentProfileDisplayName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "deviceId",
+                    "eventDateTime",
+                    "deviceRegisteredDateTime",
+                    "enrollmentStartDateTime",
+                    "enrollmentType",
+                    "deviceSerialNumber",
+                    "managedDeviceName",
+                    "userPrincipalName",
+                    "windowsAutopilotDeploymentProfileDisplayName",
+                    "enrollmentState",
+                    "windows10EnrollmentCompletionPageConfigurationDisplayName",
+                    "windows10EnrollmentCompletionPageConfigurationId",
+                    "deploymentState",
+                    "deviceSetupStatus",
+                    "accountSetupStatus",
+                    "osVersion",
+                    "deploymentDuration",
+                    "deploymentTotalDuration",
+                    "devicePreparationDuration",
+                    "deviceSetupDuration",
+                    "accountSetupDuration",
+                    "deploymentStartDateTime",
+                    "deploymentEndDateTime",
+                    "targetedAppCount",
+                    "targetedPolicyCount",
+                    "enrollmentFailureDetails"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "runAfter": {
+          "HTTP": [
+            "Succeeded"
+          ]
+        }
+      }
+    },
+    "outputs": {},
+    "parameters": {
+      "$connections": {
+        "type": "Object",
+        "defaultValue": {}
+      }
+    }
+  },
+  "parameters": {
+    "$connections": {
+      "value": {}
+    }
+  }
+}
